@@ -1,0 +1,10 @@
+/* 추가 스타일 */
+body { font-family: 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif; }
+.seat { transition: transform .15s; }
+.seat:hover { transform: scale(1.05); }
+
+@media print {
+  .no-print { display: none !important; }
+  nav, header { display: none !important; }
+  .shadow { box-shadow: none !important; }
+}
