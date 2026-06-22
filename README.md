@@ -156,6 +156,63 @@ CREATE UNIQUE INDEX uq_active_seat
 - 회원 PIN은 평문 4자리. 키오스크 PC를 신뢰할 수 있는 망에 둘 것.
 - 운영 배포 시 `db.properties`에 평문 비밀번호 두지 말고 환경변수 사용 권장.
 
+## ☁️ Railway 배포
+
+### 1) GitHub에 push
+
+```bash
+cd C:\Users\brand\dokseosil_back
+git add .
+git commit -m "Add Docker + Railway deploy setup"
+git push origin main
+```
+
+### 2) Railway 프로젝트 생성
+
+1. https://railway.app → **New Project** → **Deploy from GitHub repo**
+2. `brandkorea/dokseosilbrand` 리포 선택
+3. Railway가 `Dockerfile`을 자동 감지해 빌드 시작 (3~5분)
+
+### 3) PostgreSQL 추가
+
+1. Railway 프로젝트 안에서 **+ New** → **Database** → **Add PostgreSQL**
+2. 자동으로 `DATABASE_URL` 환경변수가 같은 프로젝트의 다른 서비스에 노출됨
+3. dokseosil 서비스 → **Variables** 탭 → **+ Add Variable Reference** → `DATABASE_URL` 선택
+
+> 자동으로 `postgres://user:pass@host:port/db` 형식. 본 앱의 [DB.java](src/main/java/com/dokseosil/util/DB.java)가 알아서 JDBC URL로 변환하고 `sslmode=require`를 붙인다.
+
+### 4) 도메인 노출
+
+dokseosil 서비스 → **Settings** → **Networking** → **Generate Domain**
+→ `your-app.up.railway.app` 발급
+
+### 5) 스키마 자동 초기화
+
+[SchemaInitializer.java](src/main/java/com/dokseosil/util/SchemaInitializer.java)가 컨테이너 시작 시 `schema.sql`을 자동 실행한다. idempotent하므로 매 재시작에도 안전.
+비활성화하려면 환경변수 `SKIP_SCHEMA_INIT=true` 추가.
+
+### 6) 최초 접속
+
+- 관리자: `https://your-app.up.railway.app/login` (admin / admin123 → 즉시 변경)
+- 키오스크: `https://your-app.up.railway.app/kiosk`
+
+### 환경변수 정리
+
+| 변수 | 출처 | 설명 |
+|------|------|------|
+| `DATABASE_URL` | Railway PostgreSQL | 자동 주입 (Variable Reference로 연결) |
+| `PORT` | Railway | 자동 주입 (Tomcat이 이 포트에 바인딩) |
+| `SKIP_SCHEMA_INIT` | 수동 | `true` 설정 시 자동 스키마 실행 안 함 |
+
+### 로컬에서 Docker로 테스트
+
+```bash
+docker build -t dokseosil .
+docker run -p 8080:8080 \
+  -e DATABASE_URL="postgresql://postgres:postgres@host.docker.internal:5432/dokseosil" \
+  dokseosil
+```
+
 ## 라이선스
 
 내부 사용 / 학습용 샘플.
