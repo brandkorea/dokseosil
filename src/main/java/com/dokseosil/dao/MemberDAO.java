@@ -33,9 +33,7 @@ public class MemberDAO {
             "  FROM member m " +
             "  LEFT JOIN attend_session s " +
             "    ON s.member_id = m.member_id AND s.check_out IS NULL " +
-            (q != null && !q.isEmpty()
-                ? " WHERE m.name ILIKE ? OR regexp_replace(coalesce(m.phone,''),'[^0-9]','','g') LIKE ? "
-                : "") +
+            " WHERE m.name ILIKE ? OR regexp_replace(coalesce(m.phone,''),'[^0-9]','','g') LIKE ? "
             " ORDER BY m.member_id DESC";
         try (Connection c = DB.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
