@@ -28,18 +28,33 @@ public class MemberDAO {
 
     /** 회원 목록 + 현재 입실 좌석 정보 LEFT JOIN. q가 있으면 이름/전화로 필터링. */
     public List<Member> search(String q) throws SQLException {
-        String sql =
+        String base =
             "SELECT m.member_id, m.name, m.phone, m.pin, m.memo, m.created_at, s.seat_no " +
             "  FROM member m " +
             "  LEFT JOIN attend_session s " +
-            "    ON s.member_id = m.member_id AND s.check_out IS NULL " +
-            " WHERE m.name ILIKE ? OR regexp_replace(coalesce(m.phone,''),'[^0-9]','','g') LIKE ? "
-            " ORDER BY m.member_id DESC";
+            "    ON s.member_id = m.member_id AND s.check_out IS NULL ";
+        String tail = " ORDER BY m.member_id DESC";
+
+        boolean hasQ      = q != null && !q.isEmpty();
+        String  digitsOnly = hasQ ? q.replaceAll("[^0-9]", "") : "";
+        boolean hasDigits = !digitsOnly.isEmpty();
+
+        // 케이스별 WHERE 절 동적 구성. 빈 digits로 '%%' 가 만들어져 전체 반환되던 버그 수정.
+        String where;
+        if (!hasQ) {
+            where = "";
+        } else if (hasDigits) {
+            where = " WHERE m.name ILIKE ? " +
+                    "    OR regexp_replace(coalesce(m.phone,''),'[^0-9]','','g') LIKE ? ";
+        } else {
+            where = " WHERE m.name ILIKE ? ";
+        }
+
         try (Connection c = DB.getConnection();
-             PreparedStatement ps = c.prepareStatement(sql)) {
-            if (q != null && !q.isEmpty()) {
+             PreparedStatement ps = c.prepareStatement(base + where + tail)) {
+            if (hasQ) {
                 ps.setString(1, "%" + q + "%");
-                ps.setString(2, "%" + q.replaceAll("[^0-9]", "") + "%");
+                if (hasDigits) ps.setString(2, "%" + digitsOnly + "%");
             }
             try (ResultSet rs = ps.executeQuery()) {
                 List<Member> list = new ArrayList<>();
